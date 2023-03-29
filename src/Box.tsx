@@ -3,7 +3,14 @@ import { useDrag } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 import { type BoxProps } from './types';
 
-function getStyles(props: BoxProps, isDragging: boolean): React.CSSProperties {
+interface BoxPropsExtended extends BoxProps {
+  active: boolean;
+}
+
+function getStyles(
+  props: BoxPropsExtended,
+  isDragging: boolean
+): React.CSSProperties {
   return {
     height: props.height,
     width: props.width,
@@ -11,11 +18,11 @@ function getStyles(props: BoxProps, isDragging: boolean): React.CSSProperties {
     position: 'absolute',
     top: props.y,
     left: props.x,
-    opacity: isDragging ? 0 : 1
+    opacity: isDragging ? 0 : props.active ? 0.5 : 1
   };
 }
 
-const Box: React.FC<BoxProps> = (props) => {
+const Box: React.FC<BoxPropsExtended> = (props) => {
   const [{ isDragging }, ref, preview] = useDrag(
     () => ({
       type: 'box',

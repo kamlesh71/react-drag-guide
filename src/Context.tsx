@@ -1,35 +1,35 @@
 import { createContext, useEffect, useState } from 'react';
-import { useDragLayer } from 'react-dnd';
+import { useDragDropManager } from 'react-dnd';
 import {
-  findHSpanPoints,
-  findVSpanPoints,
+  findLines,
+  findNearEgdes,
   initilizeBox,
-  initilizeBoxes
+  initilizeBoxes,
+  spanPoint
 } from './utils';
 import {
   type VLine,
   type BoxProps,
   type HLine,
-  type BoxExtended
+  type EdgeMatched
 } from './types';
 
-const initialBoxes: BoxProps[] = new Array(10).fill(10).map((_, i) => {
-  const width = Math.floor(Math.random() * 500 + 100);
-  const height = Math.floor(Math.random() * 500 + 100);
+const sizes = [200, 300, 200, 250, 400, 150];
 
-  return {
-    color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
-    width,
-    height,
-    x: Math.floor(Math.random() * window.innerWidth) - width,
-    y: Math.floor(Math.random() * window.innerHeight) - height
-  };
-});
+const initialBoxes: BoxProps[] = sizes.map((size) => ({
+  color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+  width: size,
+  height: size,
+  x: Math.max(Math.floor(Math.random() * window.innerWidth) - size, 0),
+  y: Math.max(Math.floor(Math.random() * window.innerHeight) - size, 0)
+}));
 
 interface ContextState {
   boxes: BoxProps[];
   vLines: VLine[];
   hLines: HLine[];
+  matches: EdgeMatched[];
+  snapedMatches: EdgeMatched[];
   moveBox: (id: string, x: number, y: number) => void;
 }
 
@@ -37,24 +37,24 @@ export const Context = createContext<ContextState>({
   boxes: [],
   vLines: [],
   hLines: [],
+  matches: [],
+  snapedMatches: [],
   moveBox() {}
 });
 
 export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({
   children
 }) => {
-  const { currentOffset, initialOffset, item, isDragging } = useDragLayer(
-    (monitor) => ({
-      initialOffset: monitor.getInitialSourceClientOffset(),
-      currentOffset: monitor.getSourceClientOffset(),
-      isDragging: monitor.isDragging(),
-      item: monitor.getItem()
-    })
-  );
+  const dragDropManager = useDragDropManager();
 
   const [boxes, setBoxes] = useState(initilizeBoxes(initialBoxes));
-  const [vLines, setVLines] = useState<VLine[]>([]);
-  const [hLines, setHLines] = useState<HLine[]>([]);
+  const [matches, setMatches] = useState<EdgeMatched[]>([]);
+  const [snapedMatches, setSnapedMatches] = useState<EdgeMatched[]>([]);
+
+  const [lines, setLines] = useState<{
+    vLines: VLine[];
+    hLines: HLine[];
+  }>({ vLines: [], hLines: [] });
 
   const moveBox = (id: string, x: number, y: number) => {
     const boxIndex = boxes.findIndex((box) => box.color === id);
@@ -73,38 +73,81 @@ export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({
     setBoxes(newBoxes);
   };
 
-  const calculateMatches = (box: BoxExtended) => {
-    const otherBoxes = boxes.filter((b) => b.color !== box.color);
-
-    const _hLines = otherBoxes.map((_box) => findHSpanPoints(box, _box)).flat();
-
-    const _vLines = otherBoxes.map((_box) => findVSpanPoints(box, _box)).flat();
-
-    if (hLines !== _hLines) {
-      setHLines(_hLines);
-    }
-
-    if (vLines !== _vLines) {
-      setVLines(_vLines);
-    }
+  const reset = () => {
+    setMatches([]);
+    setSnapedMatches([]);
+    setLines({ hLines: [], vLines: [] });
   };
 
   useEffect(() => {
-    if (currentOffset != null && initialOffset != null) {
-      const { x, y } = currentOffset;
-      calculateMatches(initilizeBox({ ...item, x, y }));
-    }
-  }, [currentOffset, initialOffset, item]);
+    const unsubscibe = dragDropManager
+      .getMonitor()
+      .subscribeToOffsetChange(() => {
+        const monitor = dragDropManager.getMonitor();
+        const contentOffset = monitor.getSourceClientOffset();
+        const item = monitor.getItem();
 
-  useEffect(() => {
-    if (!isDragging) {
-      setVLines([]);
-      setHLines([]);
-    }
-  }, [isDragging]);
+        if (contentOffset !== null && item !== null) {
+          // find possible matches
+          const matches = findNearEgdes(
+            initilizeBox({
+              ...item,
+              x: contentOffset.x,
+              y: contentOffset.y
+            }),
+            boxes.filter((box) => box.color !== item.color)
+          );
+
+          const snapedMatches = findNearEgdes(
+            initilizeBox({
+              ...item,
+              ...spanPoint(
+                initilizeBox({
+                  ...item,
+                  x: contentOffset.x,
+                  y: contentOffset.y
+                }),
+                matches
+              )
+            }),
+            boxes.filter((box) => box.color !== item.color),
+            1
+          );
+
+          setMatches(matches);
+          setSnapedMatches(snapedMatches);
+          // set lines on snap points
+          setLines(findLines(snapedMatches));
+        }
+      });
+
+    const unsubscribeStateChange = dragDropManager
+      .getMonitor()
+      .subscribeToStateChange(() => {
+        const monitor = dragDropManager.getMonitor();
+
+        if (!monitor.isDragging()) {
+          reset();
+        }
+      });
+
+    return () => {
+      unsubscibe();
+      unsubscribeStateChange();
+    };
+  }, [boxes, reset]);
 
   return (
-    <Context.Provider value={{ boxes, vLines, hLines, moveBox }}>
+    <Context.Provider
+      value={{
+        boxes,
+        vLines: lines.vLines,
+        hLines: lines.hLines,
+        moveBox,
+        matches,
+        snapedMatches
+      }}
+    >
       {children}
     </Context.Provider>
   );

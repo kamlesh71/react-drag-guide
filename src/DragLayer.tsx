@@ -1,8 +1,8 @@
 import { useContext } from 'react';
 import { useDragLayer, type XYCoord } from 'react-dnd';
 import { Context } from './Context';
-import { type VLine, type HLine } from './types';
-import { calculateHSpanPoint, calculateVSpanPoint } from './utils';
+import { type EdgeMatched, type BoxExtended } from './types';
+import { initilizeBox, spanPoint } from './utils';
 
 const layerStyles: React.CSSProperties = {
   position: 'fixed',
@@ -17,23 +17,22 @@ const layerStyles: React.CSSProperties = {
 function getItemStyles(
   initialOffset: XYCoord | null,
   currentOffset: XYCoord | null,
-  hLines: HLine[] | null,
-  vLines: VLine[] | null
+  item: BoxExtended,
+  matches: EdgeMatched[]
 ) {
   if (initialOffset == null || currentOffset == null) {
     return {
       display: 'none'
     };
   }
-  let { x, y } = currentOffset;
-
-  if (hLines?.[0] != null) {
-    y = calculateHSpanPoint(hLines[0]);
-  }
-
-  if (vLines?.[0] != null) {
-    x = calculateVSpanPoint(vLines[0]);
-  }
+  const { x, y } = spanPoint(
+    initilizeBox({
+      ...item,
+      x: currentOffset.x,
+      y: currentOffset.y
+    }),
+    matches
+  );
 
   const transform = `translate(${x}px, ${y}px)`;
   return {
@@ -43,7 +42,7 @@ function getItemStyles(
 }
 
 export const DragLayer = () => {
-  const { hLines, vLines } = useContext(Context);
+  const { matches } = useContext(Context);
 
   const { isDragging, item, initialOffset, currentOffset } = useDragLayer(
     (monitor) => ({
@@ -70,7 +69,7 @@ export const DragLayer = () => {
   }
   return (
     <div style={layerStyles}>
-      <div style={getItemStyles(initialOffset, currentOffset, hLines, vLines)}>
+      <div style={getItemStyles(initialOffset, currentOffset, item, matches)}>
         {renderItem()}
       </div>
     </div>

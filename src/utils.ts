@@ -2,154 +2,119 @@ import {
   type VLine,
   type BoxExtended,
   type BoxProps,
-  type HLine
+  type Edges,
+  type HLine,
+  type EdgeMatched
 } from './types';
 
-export const THRESHOLD = 20;
+export const THRESHOLD = 10;
 
-export const calculateHSpanPoint = (hLine: HLine) => {
-  const origin = hLine.origin[0];
+const hEdges: Edges[] = ['l', 'lr', 'r'];
+const vEdges: Edges[] = ['t', 'tb', 'b'];
 
-  if (origin === 'bottom') {
-    return hLine.y - hLine.elements[0].height;
-  }
-
-  if (origin === 'middleH') {
-    return hLine.y - hLine.elements[0].height / 2;
-  }
-
-  return hLine.y;
+export const compare = (val1: number, val2: number, threshold: number) => {
+  return Math.abs(val1 - val2) < threshold;
 };
 
-export const calculateVSpanPoint = (vLine: VLine) => {
-  const origin = vLine.origin[0];
+export const spanPoint = (dragginBox: BoxExtended, matches: EdgeMatched[]) => {
+  let x = dragginBox.x;
+  let y = dragginBox.y;
 
-  if (origin === 'right') {
-    return vLine.x - vLine.elements[0].width;
-  }
+  matches.forEach((match) => {
+    if (vEdges.includes(match.boxEdge)) {
+      if (match.dragginBoxEgde === 't') {
+        y = match.box[match.boxEdge];
+      } else if (match.dragginBoxEgde === 'tb') {
+        y = match.box[match.boxEdge] - match.dragginBox.height / 2;
+      } else {
+        y = match.box[match.boxEdge] - match.dragginBox.height;
+      }
+    } else {
+      if (match.dragginBoxEgde === 'r') {
+        x = match.box[match.boxEdge] - match.dragginBox.width;
+      } else if (match.dragginBoxEgde === 'lr') {
+        x = match.box[match.boxEdge] - match.dragginBox.width / 2;
+      } else {
+        x = match.box[match.boxEdge];
+      }
+    }
+  });
 
-  if (origin === 'middleV') {
-    return vLine.x - vLine.elements[0].width / 2;
-  }
-
-  return vLine.x;
+  return { x, y };
 };
 
-export const uniqueLines = <T>(lines: HLine[] | VLine[]): T => {
-  return [
-    ...new Map(lines.map((line) => [line.elements[1].color, line])).values()
-  ] as T;
+export const findLines = (snapedMatches: EdgeMatched[]) => {
+  const vLines: VLine[] = [];
+  const hLines: HLine[] = [];
+
+  snapedMatches.forEach((match) => {
+    const { box, dragginBox } = match;
+    if (['l', 'lr', 'r'].includes(match.boxEdge)) {
+      vLines.push({
+        y1: box.t < dragginBox.t ? box.t : dragginBox.t,
+        y2: box.b < dragginBox.b ? dragginBox.b : box.b,
+        x: box[match.boxEdge]
+      });
+    } else {
+      hLines.push({
+        x1: box.l < dragginBox.l ? box.l : dragginBox.l,
+        x2: box.r < dragginBox.r ? dragginBox.r : box.r,
+        y: box[match.boxEdge]
+      });
+    }
+  });
+
+  return { vLines, hLines };
+};
+
+export const findNearEgdes = (
+  draggingBox: BoxExtended,
+  otherBoxes: BoxExtended[],
+  threshold: number = THRESHOLD
+) => {
+  const allMatches: EdgeMatched[] = [];
+
+  otherBoxes.forEach((box) => {
+    hEdges.forEach((edge1) => {
+      hEdges.forEach((edge2) => {
+        if (compare(draggingBox[edge1], box[edge2], threshold)) {
+          allMatches.push({
+            dragginBox: draggingBox,
+            dragginBoxEgde: edge1,
+            box,
+            boxEdge: edge2
+          });
+        }
+      });
+    });
+  });
+
+  otherBoxes.forEach((box) => {
+    vEdges.forEach((edge1) => {
+      vEdges.forEach((edge2) => {
+        if (compare(draggingBox[edge1], box[edge2], threshold)) {
+          allMatches.push({
+            dragginBox: draggingBox,
+            dragginBoxEgde: edge1,
+            box,
+            boxEdge: edge2
+          });
+        }
+      });
+    });
+  });
+
+  return allMatches;
 };
 
 export const initilizeBox = (box: BoxProps): BoxExtended => ({
   ...box,
-  top: box.y,
-  left: box.x,
-  bottom: box.y + box.height,
-  right: box.x + box.width,
-  middleH: box.y + box.height / 2,
-  middleV: box.x + box.width / 2
+  t: box.y,
+  l: box.x,
+  b: box.y + box.height,
+  r: box.x + box.width,
+  tb: box.y + box.height / 2,
+  lr: box.x + box.width / 2
 });
-
-type hEdges = keyof Pick<BoxExtended, 'top' | 'bottom' | 'middleH'>;
-type vEdges = keyof Pick<BoxExtended, 'left' | 'right' | 'middleV'>;
-
-const compareh = (
-  box1: BoxExtended,
-  box2: BoxExtended,
-  obj1: hEdges,
-  obj2: hEdges
-): HLine | null => {
-  if (
-    box1[obj1] < box2[obj2] + THRESHOLD &&
-    box1[obj1] > box2[obj2] - THRESHOLD
-  ) {
-    const x1 = box1.x < box2.x ? box1.x : box2.x;
-    const x2 = box1.x < box2.x ? box2.right : box1.right;
-
-    return {
-      x1,
-      x2,
-      y: box2[obj2],
-      elements: [box1, box2],
-      origin: [obj1, obj2],
-      showBorder: box1[obj1] === box2[obj2]
-    };
-  }
-
-  return null;
-};
-
-const comparev = (
-  box1: BoxExtended,
-  box2: BoxExtended,
-  obj1: vEdges,
-  obj2: vEdges
-): VLine | null => {
-  if (
-    box1[obj1] < box2[obj2] + THRESHOLD &&
-    box1[obj1] > box2[obj2] - THRESHOLD
-  ) {
-    const y1 = box1.y < box2.y ? box1.y : box2.y;
-    const y2 = box1.y < box2.y ? box2.bottom : box1.bottom;
-
-    return {
-      y1,
-      y2,
-      x: box2[obj2],
-      elements: [box1, box2],
-      origin: [obj1, obj2],
-      showBorder: box1[obj1] === box2[obj2]
-    };
-  }
-
-  return null;
-};
-
-export const findHSpanPoints = (
-  box1: BoxExtended,
-  box2: BoxExtended
-): HLine[] => {
-  // horzantal line
-
-  let res;
-
-  const edges: hEdges[] = ['top', 'middleH', 'bottom'];
-
-  const matches: HLine[] = [];
-
-  edges.forEach((edge) => {
-    edges.forEach((edge2) => {
-      if ((res = compareh(box1, box2, edge, edge2)) != null) {
-        matches.push(res);
-      }
-    });
-  });
-
-  return matches;
-};
-
-export const findVSpanPoints = (
-  box1: BoxExtended,
-  box2: BoxExtended
-): VLine[] => {
-  // vertical line
-
-  let res;
-
-  const edges: vEdges[] = ['left', 'middleV', 'right'];
-
-  const matches: VLine[] = [];
-
-  edges.forEach((edge) => {
-    edges.forEach((edge2) => {
-      if ((res = comparev(box1, box2, edge, edge2)) != null) {
-        matches.push(res);
-      }
-    });
-  });
-
-  return matches;
-};
 
 export const initilizeBoxes = (boxes: BoxProps[]) => boxes.map(initilizeBox);

@@ -3,7 +3,7 @@ import { Context } from './Context';
 import React, { useContext, useMemo } from 'react';
 import Box from './Box';
 import { type HLine, type BoxProps, type VLine } from './types';
-import { calculateHSpanPoint, calculateVSpanPoint } from './utils';
+import { initilizeBox, spanPoint } from './utils';
 
 const styles: React.CSSProperties = {
   backgroundColor: '#f1f1f1',
@@ -33,35 +33,47 @@ const getVLineStyle = (hLine: VLine): React.CSSProperties => ({
 });
 
 export const DropArea: React.FC = () => {
-  const { boxes, moveBox, hLines, vLines } = useContext(Context);
+  const { boxes, moveBox, hLines, vLines, matches, snapedMatches } =
+    useContext(Context);
 
   const [, dropRef] = useDrop(
     () => ({
       accept: 'box',
       drop(item: BoxProps, monitor) {
         const delta = monitor.getDifferenceFromInitialOffset() as XYCoord;
-        let x = Math.round(item.x + delta.x);
-        let y = Math.round(item.y + delta.y);
 
-        if (hLines?.[0] !== undefined) {
-          y = calculateHSpanPoint(hLines[0]);
-        }
-
-        if (vLines?.[0] !== undefined) {
-          x = calculateVSpanPoint(vLines[0]);
-        }
+        const { x, y } = spanPoint(
+          initilizeBox({
+            ...item,
+            x: Math.round(item.x + delta.x),
+            y: Math.round(item.y + delta.y)
+          }),
+          matches
+        );
 
         moveBox(item.color, x, y);
         return undefined;
       }
     }),
-    [moveBox, hLines, vLines]
+    [moveBox, matches]
   );
+
+  const activeColors = useMemo(() => {
+    const activeColors = snapedMatches.map((match) => {
+      return match.box.color;
+    });
+
+    return activeColors;
+  }, [snapedMatches]);
 
   return (
     <div style={styles} ref={dropRef}>
       {boxes.map((box) => (
-        <Box key={box.color} {...box} />
+        <Box
+          key={box.color}
+          {...box}
+          active={activeColors.includes(box.color)}
+        />
       ))}
 
       {React.Children.toArray(

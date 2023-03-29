@@ -6,29 +6,35 @@ export interface BoxProps {
   height: number;
 }
 
-export interface BoxExtended extends BoxProps {
-  top: number;
-  left: number;
-  bottom: number;
-  right: number;
-  middleH: number;
-  middleV: number;
+export interface EdgeMatched {
+  dragginBox: BoxExtended;
+  box: BoxExtended;
+  dragginBoxEgde: Edges;
+  boxEdge: Edges;
 }
+
+export interface BoxExtended extends BoxProps {
+  t: number;
+  l: number;
+  b: number;
+  r: number;
+  lr: number;
+  tb: number;
+}
+
+export type Edges = keyof Pick<
+  BoxExtended,
+  'l' | 'r' | 'lr' | 't' | 'tb' | 'b'
+>;
 
 export interface VLine {
   y1: number;
   y2: number;
   x: number;
-  elements: [BoxExtended, BoxExtended];
-  origin: [string, string];
-  showBorder: boolean;
 }
 
 export interface HLine {
   x1: number;
   x2: number;
   y: number;
-  elements: [BoxExtended, BoxExtended];
-  origin: [string, string];
-  showBorder: boolean;
 }
