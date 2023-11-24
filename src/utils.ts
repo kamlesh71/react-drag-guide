@@ -107,7 +107,7 @@ export const findNearEgdes = (
   return allMatches;
 };
 
-export const initilizeBox = (box: BoxProps): BoxExtended => ({
+export const initializeBox = (box: BoxProps): BoxExtended => ({
   ...box,
   t: box.y,
   l: box.x,
@@ -117,4 +117,4 @@ export const initilizeBox = (box: BoxProps): BoxExtended => ({
   lr: box.x + box.width / 2
 });
 
-export const initilizeBoxes = (boxes: BoxProps[]) => boxes.map(initilizeBox);
+export const initializeBoxes = (boxes: BoxProps[]) => boxes.map(initializeBox);

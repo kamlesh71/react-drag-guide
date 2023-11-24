@@ -3,7 +3,7 @@ import { Context } from './Context';
 import React, { useContext, useMemo } from 'react';
 import Box from './Box';
 import { type HLine, type BoxProps, type VLine } from './types';
-import { initilizeBox, spanPoint } from './utils';
+import { initializeBox, spanPoint } from './utils';
 
 const styles: React.CSSProperties = {
   backgroundColor: '#f1f1f1',
@@ -43,7 +43,7 @@ export const DropArea: React.FC = () => {
         const delta = monitor.getDifferenceFromInitialOffset() as XYCoord;
 
         const { x, y } = spanPoint(
-          initilizeBox({
+          initializeBox({
             ...item,
             x: Math.round(item.x + delta.x),
             y: Math.round(item.y + delta.y)

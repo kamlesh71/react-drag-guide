@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import { useDragLayer, type XYCoord } from 'react-dnd';
 import { Context } from './Context';
 import { type EdgeMatched, type BoxExtended } from './types';
-import { initilizeBox, spanPoint } from './utils';
+import { initializeBox, spanPoint } from './utils';
 
 const layerStyles: React.CSSProperties = {
   position: 'fixed',
@@ -26,7 +26,7 @@ function getItemStyles(
     };
   }
   const { x, y } = spanPoint(
-    initilizeBox({
+    initializeBox({
       ...item,
       x: currentOffset.x,
       y: currentOffset.y

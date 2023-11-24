@@ -3,8 +3,8 @@ import { useDragDropManager } from 'react-dnd';
 import {
   findLines,
   findNearEgdes,
-  initilizeBox,
-  initilizeBoxes,
+  initializeBox,
+  initializeBoxes,
   spanPoint
 } from './utils';
 import {
@@ -47,7 +47,7 @@ export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const dragDropManager = useDragDropManager();
 
-  const [boxes, setBoxes] = useState(initilizeBoxes(initialBoxes));
+  const [boxes, setBoxes] = useState(initializeBoxes(initialBoxes));
   const [matches, setMatches] = useState<EdgeMatched[]>([]);
   const [snapedMatches, setSnapedMatches] = useState<EdgeMatched[]>([]);
 
@@ -64,7 +64,7 @@ export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     const newBoxes = [...boxes];
-    newBoxes[boxIndex] = initilizeBox({
+    newBoxes[boxIndex] = initializeBox({
       ...newBoxes[boxIndex],
       x,
       y
@@ -90,7 +90,7 @@ export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({
         if (contentOffset !== null && item !== null) {
           // find possible matches
           const matches = findNearEgdes(
-            initilizeBox({
+            initializeBox({
               ...item,
               x: contentOffset.x,
               y: contentOffset.y
@@ -99,10 +99,10 @@ export const ContextProvider: React.FC<{ children: React.ReactNode }> = ({
           );
 
           const snapedMatches = findNearEgdes(
-            initilizeBox({
+            initializeBox({
               ...item,
               ...spanPoint(
-                initilizeBox({
+                initializeBox({
                   ...item,
                   x: contentOffset.x,
                   y: contentOffset.y
